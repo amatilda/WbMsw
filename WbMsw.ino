@@ -76,7 +76,7 @@ static void SystemEvent(ZUNOSysEvent_t* ev)
     ssize_t value;
     ssize_t defaultValue;
     size_t paramNumber;
-    const ZunoCFGParameter_t *parameters;
+    const ZunoCFGParameter_t* parameters;
 
     switch (ev->event) {
         // A new firmware image for the second chip from the Z-Wave controller has arrived
@@ -89,7 +89,7 @@ static void SystemEvent(ZUNOSysEvent_t* ev)
             }
             break;
         case ZUNO_SYS_EVENT_LEARNSTATUS:
-            if((ev->params[0] == INCLUSION_STATUS_SUCESS) && (ev->params[1] == 0)) {
+            if ((ev->params[0] == INCLUSION_STATUS_SUCESS) && (ev->params[1] == 0)) {
                 i = 0x0;
                 while (i < WB_MSW_MAX_CONFIG_PARAM) {
                     value = zunoLoadCFGParam(i + WB_MSW_CONFIG_PARAMETER_FIRST);
@@ -101,7 +101,7 @@ static void SystemEvent(ZUNOSysEvent_t* ev)
                     }
                     i++;
                 }
-                }
+            }
             break;
     }
 }
