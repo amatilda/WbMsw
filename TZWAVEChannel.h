@@ -21,8 +21,9 @@ public:
         MOTION,
         INTRUSION,
         BUZZER,
+        IR_BINARY,
     };
-    static const int CHANNEL_TYPES_COUNT = 9;
+    static const int CHANNEL_TYPES_COUNT = 10;
 
     TZWAVEChannel();
     void ChannelInitialize(String name,

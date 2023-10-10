@@ -21,6 +21,7 @@ ZUNO_ENABLE(
 		WITH_CC_NOTIFICATION
 		WITH_CC_SOUND_SWITCH
 		WITH_CC_BASIC
+		WITH_CC_SWITCH_BINARY
 		// SKETCH_FLAGS=(HEADER_FLAGS_NOSKETCH_OTA)
 		ZUNO_CUSTOM_OTA_OFFSET=0x8000
 		/* Additional OTA firmwares count*/
@@ -28,7 +29,7 @@ ZUNO_ENABLE(
 		SKETCH_VERSION=0x010D
 		/* Firmware descriptor pointer */
 		ZUNO_EXT_FIRMWARES_DESCR_PTR=&g_OtaDesriptor
-		CONFIGPARAMETERS_MAX_COUNT=45//expands the number of parameters available
+		CONFIGPARAMETERS_MAX_COUNT=46//expands the number of parameters available
 		CERT_BUILD//Disables some config options
 		WB_MSW_CERT_BUILD_INDICATOR=100
 		MAX_PROCESSED_QUEUE_PKGS=1
@@ -132,6 +133,7 @@ void setup()
 static void SoundSwitchLoop(void);
 void SendTest(uint16_t version);
 static void ServiceLedLoop(void);
+static void IrLoop(void);
 
 // Main loop
 void loop()
@@ -245,9 +247,52 @@ void loop()
             }
             SoundSwitchLoop();
             ServiceLedLoop();
+            IrLoop();
             // delay(50);
             break;
         }
+    }
+}
+
+static void IrConfigLoop(void)
+{
+    int32_t config;
+
+    config = ZwaveSensor.GetParameterValue(WB_MSW_CONFIG_IR_BINARY);
+    switch (config) {
+        case 0x100:
+            WbMsw.IrRecordStop(1);
+            break;
+        case 0x101:
+            WbMsw.IrRecordStart(1);
+            break;
+        case 0x200:
+            WbMsw.IrRecordStop(2);
+            break;
+        case 0x201:
+            WbMsw.IrRecordStart(2);
+            break;
+        default:
+            return;
+            break;
+    }
+    LOG_INT_VALUE("IrRecord", config);
+    ZwaveSensor.SetParameterValue(WB_MSW_CONFIG_IR_BINARY, WB_MSW_CONFIG_IR_BINARY_DEFAULT);
+    zunoSaveCFGParam(WB_MSW_CONFIG_IR_BINARY, WB_MSW_CONFIG_IR_BINARY_DEFAULT);
+}
+bool ir_binary_get(uint8_t* value);
+static void IrLoop(void)
+{
+    uint8_t value;
+
+    IrConfigLoop();
+    if (ir_binary_get(&value) == true) {
+        if (value == 0)
+            value = 1;
+        else
+            value = 2;
+        LOG_INT_VALUE("IrPlay", value);
+        WbMsw.IrPlay(value);
     }
 }
 

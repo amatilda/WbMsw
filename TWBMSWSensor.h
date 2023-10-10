@@ -49,6 +49,10 @@ public:
     bool GetMotionAvailability(TWBMSWSensor::Availability& availability);
 
     bool BuzzerAvailable(TWBMSWSensor::Availability& availability);
+    bool IrBinaryAvailable(TWBMSWSensor::Availability& availability);
+    bool IrPlay(uint8_t index);
+    bool IrRecordStart(uint8_t index);
+    bool IrRecordStop(uint8_t index);
     bool BuzzerStart(void);
     bool BuzzerStop(void);
 

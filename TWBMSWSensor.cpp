@@ -30,6 +30,9 @@
 
 #define WBMSW_COIL_BUZZER 0x0000
 
+#define WBMSW_IR_RECORD 5300
+#define WBMSW_IR_PLAY 5100
+
 #define WBMSW_COIL_LED_RED 10
 #define WBMSW_COIL_LED_GREEN 11
 #define WBMSW_HOLDING_LED_FLASH_TIMOUT 97
@@ -308,6 +311,27 @@ bool TWBMSWSensor::BuzzerAvailable(TWBMSWSensor::Availability& availability)
     availability = TWBMSWSensor::Availability::AVAILABLE;
     return true;
 }
+bool TWBMSWSensor::IrBinaryAvailable(TWBMSWSensor::Availability& availability)
+{
+    availability = TWBMSWSensor::Availability::AVAILABLE;
+    return true;
+}
+
+bool TWBMSWSensor::IrPlay(uint8_t index)
+{
+    return writeSingleCoils(Address, WBMSW_IR_PLAY + index, 0x1);
+}
+
+bool TWBMSWSensor::IrRecordStart(uint8_t index)
+{
+    return writeSingleCoils(Address, WBMSW_IR_RECORD + index, 0x1);
+}
+
+bool TWBMSWSensor::IrRecordStop(uint8_t index)
+{
+    return writeSingleCoils(Address, WBMSW_IR_RECORD + index, 0x0);
+}
+
 bool TWBMSWSensor::BuzzerStart(void)
 {
     return writeSingleCoils(Address, WBMSW_COIL_BUZZER, 0x1);

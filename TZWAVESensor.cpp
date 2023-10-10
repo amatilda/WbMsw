@@ -199,7 +199,9 @@ TZWAVESensor::TZWAVESensor(TWBMSWSensor* wbMsw): WbMsw(wbMsw)
         ZUNO_CONFIG_PARAMETER_INFO("Intrusion delay to send OFF command", "Value in seconds.", 0, 100000, 5),
 
         ZUNO_CONFIG_PARAMETER_INFO("Motion LED", "The LED flashes red when motion is detected.", 0, 255, 255),
-        ZUNO_CONFIG_PARAMETER_INFO("Operation mode LED", "The LED flashes green in operating mode", 0, 255, 255)};
+        ZUNO_CONFIG_PARAMETER_INFO("Operation mode LED", "The LED flashes green in operating mode", 0, 255, 255),
+        ZUNO_CONFIG_PARAMETER_INFO("IR binary", "IR binary", 0, 0x201, WB_MSW_CONFIG_IR_BINARY_DEFAULT),
+    };
     memcpy(Parameters, parameters, sizeof(parameters));
     MotionLastTimeWaitOff = false;
     IntrusionLastTimeWaitOff = false;
@@ -347,6 +349,20 @@ bool TZWAVESensor::ChannelsInitialize()
                                   NULL,
                                   &TWBMSWSensor::BuzzerAvailable,
                                   0);
+    Channels[9].ChannelInitialize("Ir_binary",
+                                  TZWAVEChannel::Type::IR_BINARY,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  0,
+                                  WbMsw,
+                                  NULL,
+                                  &TWBMSWSensor::IrBinaryAvailable,
+                                  0);
 
     bool unknownSensorsLeft = false;
 
@@ -391,7 +407,8 @@ bool TZWAVESensor::ChannelsInitialize()
     for (int i = 0; i < TZWAVEChannel::CHANNEL_TYPES_COUNT; i++) {
         if (Channels[i].GetEnabled()) {
             if (Channels[i].GetType() == TZWAVEChannel::Type::INTRUSION ||
-                Channels[i].GetType() == TZWAVEChannel::Type::BUZZER)
+                Channels[i].GetType() == TZWAVEChannel::Type::BUZZER ||
+                Channels[i].GetType() == TZWAVEChannel::Type::IR_BINARY)
             {
                 Channels[i].SetChannelNumbers(channelDeviceNumber, channelDeviceNumber + 1, 0xFF);
             } else {
@@ -481,6 +498,10 @@ void TZWAVESensor::ChannelsSetup()
                     zunoAddChannel(ZUNO_SOUND_SWITCH_CHANNEL_NUMBER, 50, 0);
                     zunoSetZWChannel(Channels[i].GetDeviceChannelNumber(), Channels[i].GetServerChannelNumber());
                     break;
+                case TZWAVEChannel::Type::IR_BINARY:
+                    zunoAddChannel(ZUNO_SWITCH_BINARY_CHANNEL_NUMBER, 0, 0);
+                    zunoSetZWChannel(Channels[i].GetDeviceChannelNumber(), Channels[i].GetServerChannelNumber());
+                    break;
                 default:
                     break;
             }
@@ -491,6 +512,32 @@ void TZWAVESensor::ChannelsSetup()
     }
 }
 
+static uint8_t ir_binary_currentValue = 0;
+static bool ir_binary_state = false;
+
+static uint8_t ir_binary_getterFunction()
+{
+    return ir_binary_currentValue;
+}
+
+static void ir_binary_setterFunction(uint8_t newValue)
+{
+    ir_binary_currentValue = newValue;
+    ir_binary_state = true;
+}
+
+bool ir_binary_get(uint8_t* value)
+{
+    if (ir_binary_state == false)
+        return (false);
+    ir_binary_state = false;
+    value[0] = ir_binary_currentValue;
+    return (true);
+}
+
+zuno_handler_single_gettersetter_t __hdata_getterFunction = {(void*)&ir_binary_getterFunction,
+                                                             (void*)&ir_binary_setterFunction};
+
 // Setting up handlers for all sensor cannels. Handler is used when requesting channel data from controller
 // Function binds i-channel directly to value
 void TZWAVESensor::SetChannelHandlers()
@@ -498,6 +545,13 @@ void TZWAVESensor::SetChannelHandlers()
     for (size_t i = 0; i < TZWAVEChannel::CHANNEL_TYPES_COUNT; i++) {
         if (Channels[i].GetType() == TZWAVEChannel::Type::BUZZER)
             continue;
+        if (Channels[i].GetType() == TZWAVEChannel::Type::IR_BINARY) {
+            zunoAppendChannelHandler(Channels[i].GetDeviceChannelNumber(),
+                                     1,
+                                     CHANNEL_HANDLER_SINGLE_GETTERSETTER,
+                                     (void*)&__hdata_getterFunction);
+            continue;
+        }
         if (Channels[i].GetEnabled()) {
             uint8_t dataSize;
             switch (Channels[i].GetType()) {
@@ -554,6 +608,7 @@ const char* TZWAVESensor::GetGroupNameByIndex(uint8_t groupIndex)
 
 void TZWAVESensor::ParametersInitialize()
 {
+    zunoSaveCFGParam(WB_MSW_CONFIG_IR_BINARY, WB_MSW_CONFIG_IR_BINARY_DEFAULT);
     // Load configuration parameters from FLASH memory
     for (size_t i = 0; i < WB_MSW_MAX_CONFIG_PARAM; i++) {
         ParameterValues[i] = zunoLoadCFGParam(i + WB_MSW_CONFIG_PARAMETER_FIRST);
@@ -697,6 +752,8 @@ const ZunoCFGParameter_t* TZWAVESensor::GetParameterIfChannelExists(size_t param
             break;
         case WB_MSW_CONFIG_PARAMETER_MOTION_LED:
         case WB_MSW_CONFIG_PARAMETER_OPERATION_LED:
+            break;
+        case WB_MSW_CONFIG_IR_BINARY:
             break;
         default:
             return (ZUNO_CFG_PARAMETER_UNKNOWN);
@@ -940,6 +997,7 @@ TZWAVESensor::Result TZWAVESensor::ProcessChannels()
             switch (Channels[i].GetType()) {
                 case TZWAVEChannel::Type::INTRUSION:
                 case TZWAVEChannel::Type::BUZZER:
+                case TZWAVEChannel::Type::IR_BINARY:
                     result = TZWAVESensor::Result::ZWAVE_PROCESS_OK;
                     break;
                 case TZWAVEChannel::Type::MOTION:
